@@ -107,7 +107,7 @@ class PreprocessRSI():
             return np.mean(y, axis=1)
             
     def apply_filter(self, subject, k_size, type='median'):
-        #print('Subject: '+str(subject))
+        print('Subject: '+str(subject))
         df_filtered = self.df_pc_[subject].copy()
         # Eliminate the first 0.1 sec
         df_filtered = df_filtered.loc[500:]
@@ -172,7 +172,7 @@ class PreprocessRSI():
         print('Applying Median Filter...')
         st = time.time()
         # Initialize the pool
-        pool = mp.Pool(3)
+        pool = mp.Pool(mp.cpu_count())
         #with tqdm(total=len(self.df_pc_), file=stdout, position=0, leave=True) as pbar:
         #    for i in tqdm(range(len(self.df_pc_)), position=0, leave=True, desc='  Subject'):
                 #pbar.set_description('  Subject')
@@ -194,14 +194,19 @@ class PreprocessRSI():
         return self
 
 # %%
-#if __name__ == "__main__":
-st_all = time.time()
+if __name__ == "__main__":
+    st_all = time.time()
 
-model = PreprocessRSI('ProComp')
-#model.plot_freq(model.df_pc_, 57, groups=[1,2,3,4,5], export=False)
-model.execute_median_filter(151)
-model.add_nontime_dependencies()
+    model = PreprocessRSI('ProComp')
+    #model.plot_freq(model.df_pc_, 57, groups=[1,2,3,4,5], export=False)
+    model.execute_median_filter(151)
+    model.add_nontime_dependencies()
+    model.fit_scaler(StandardScaler())
+    model.transform_scaler()
 
+    end_all = time.time()
+    print('Done.\nTime: '+str(round((end_all-st_all)/60,2))+' minutes.')
+    model.export_pickle()
 # %%
 '''
 from scipy.signal import welch
@@ -229,13 +234,3 @@ peak_freq = xf[power.argmax()]
 #plt.show()
 '''
 # %%
-model.fit_scaler(StandardScaler())
-model.transform_scaler()
-
-end_all = time.time()
-print('Done.\nTime: '+str(round((end_all-st_all)/60,2))+' minutes.')
-# %% [markdown]
-'''
-# Comments: 
-- mahalanobis distance y otras distancias.
-'''
