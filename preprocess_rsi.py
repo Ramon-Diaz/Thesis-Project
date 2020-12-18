@@ -172,7 +172,7 @@ class PreprocessRSI():
         print('Applying Median Filter...')
         st = time.time()
         # Initialize the pool
-        pool = mp.Pool(mp.cpu_count())
+        pool = mp.Pool(40)
         #with tqdm(total=len(self.df_pc_), file=stdout, position=0, leave=True) as pbar:
         #    for i in tqdm(range(len(self.df_pc_)), position=0, leave=True, desc='  Subject'):
                 #pbar.set_description('  Subject')
