@@ -178,7 +178,7 @@ class PreprocessRSI():
                 #pbar.set_description('  Subject')
         #        self.df_pc_filtered_.append(self.apply_filter(i,k_size))
         #        pbar.update(1)
-        self.df_pc_filtered_ = pool.starmap_async(self.apply_filter, [(i, 151) for i in range(len(self.df_pc_))]).get()
+        self.df_pc_filtered_ = pool.starmap_async(self.apply_filter, [(i, k_size) for i in range(len(self.df_pc_))]).get()
         pool.close()
         end = time.time()
         print('Time: '+str(round((end-st)/60,2))+' minutes.')
