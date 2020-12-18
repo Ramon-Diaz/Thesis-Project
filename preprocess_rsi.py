@@ -172,14 +172,14 @@ class PreprocessRSI():
         print('Applying Median Filter...')
         st = time.time()
         # Initialize the pool
-        #pool = mp.Pool(3)
-        with tqdm(total=len(self.df_pc_), file=stdout, position=0, leave=True) as pbar:
-            for i in tqdm(range(len(self.df_pc_)), position=0, leave=True, desc='  Subject'):
+        pool = mp.Pool(3)
+        #with tqdm(total=len(self.df_pc_), file=stdout, position=0, leave=True) as pbar:
+        #    for i in tqdm(range(len(self.df_pc_)), position=0, leave=True, desc='  Subject'):
                 #pbar.set_description('  Subject')
-                self.df_pc_filtered_.append(self.apply_filter(i,k_size))
-                pbar.update(1)
-        #self.df_pc_filtered_ = pool.starmap_async(self.apply_filter, [(i, 151) for i in range(len(self.df_pc_))]).get()
-        #pool.close()
+        #        self.df_pc_filtered_.append(self.apply_filter(i,k_size))
+        #        pbar.update(1)
+        self.df_pc_filtered_ = pool.starmap_async(self.apply_filter, [(i, 151) for i in range(len(self.df_pc_))]).get()
+        pool.close()
         end = time.time()
         print('Time: '+str(round((end-st)/60,2))+' minutes.')
 
