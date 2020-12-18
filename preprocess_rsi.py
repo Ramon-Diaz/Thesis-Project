@@ -171,15 +171,12 @@ class PreprocessRSI():
     def execute_median_filter(self, k_size):
         print('Applying Median Filter...')
         st = time.time()
-        # Initialize the pool
-        pool = mp.Pool(40)
-        #with tqdm(total=len(self.df_pc_), file=stdout, position=0, leave=True) as pbar:
-        #    for i in tqdm(range(len(self.df_pc_)), position=0, leave=True, desc='  Subject'):
-                #pbar.set_description('  Subject')
-        #        self.df_pc_filtered_.append(self.apply_filter(i,k_size))
-        #        pbar.update(1)
-        self.df_pc_filtered_ = pool.starmap_async(self.apply_filter, [(i, k_size) for i in range(len(self.df_pc_))]).get()
-        pool.close()
+    
+        with tqdm(total=len(self.df_pc_), file=stdout, position=0, leave=True) as pbar:
+            for i in tqdm(range(len(self.df_pc_)), position=0, leave=True, desc='  Subject'):
+                self.df_pc_filtered_.append(self.apply_filter(i,k_size))
+                pbar.update(1)
+
         end = time.time()
         print('Time: '+str(round((end-st)/60,2))+' minutes.')
 
@@ -199,7 +196,14 @@ if __name__ == "__main__":
 
     model = PreprocessRSI('ProComp')
     #model.plot_freq(model.df_pc_, 57, groups=[1,2,3,4,5], export=False)
-    model.execute_median_filter(151)
+    print('Applying Median Filter...')
+    st = time.time()
+    # Initialize the pool
+    pool = mp.Pool(40)
+    model.df_pc_filtered_ = pool.starmap_async(model.apply_filter, [(i, 151) for i in range(len(model.df_pc_))]).get()
+    pool.close()
+    end = time.time()
+    print('Time: '+str(round((end-st)/60,2))+' minutes.')
     model.add_nontime_dependencies()
     #model.fit_scaler(StandardScaler())
     #model.transform_scaler()
