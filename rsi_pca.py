@@ -1,18 +1,15 @@
 # %%
-from math import exp
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt # For plots
+import matplotlib.pyplot as plt
+import scipy
 import seaborn as sns
 from time import time
 import pickle
 from tqdm.auto import tqdm
 from sys import stdout
 
-
-from glob import glob # To find files recursively
-
-from sklearn.preprocessing import StandardScaler, PowerTransformer
+from sklearn.preprocessing import PowerTransformer
 from sklearn.decomposition import PCA
 
 class ResilienceStressIndex():
@@ -376,6 +373,22 @@ def mahalanobis_distance(resample=False):
     distances = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
 
     return distances
+
+def mahalanobis(x=None, data=None, cov=None):
+    """Compute the Mahalanobis Distance between each row of x and the data  
+    x    : vector or matrix of data with, say, p columns.
+    data : ndarray of the distribution from which Mahalanobis distance of each observation of x is to be computed.
+    cov  : covariance matrix (p x p) of the distribution. If None, will be computed from data.
+    """
+    x_minus_mu = x - np.mean(data)
+    if not cov:
+        cov = np.cov(data.values.T)
+    inv_covmat = scipy.linalg.inv(cov)
+    left_term = np.dot(x_minus_mu, inv_covmat)
+    mahal = np.dot(left_term, x_minus_mu.T)
+    return mahal.diagonal()
+
+mahalanobis(x=model.df_pc_.get(100).drop(['Time','Subject'],axis=1)[(model.df_pc_.get(100).drop(['Time','Subject'],axis=1)['Phase']=='phase1')].drop('Phase',axis=1),data=model.df_pc_centroids_.get(100).drop(['Phase','Time'],axis=1).loc[1])
     
 # %%
 #model.euclidean_distance()
