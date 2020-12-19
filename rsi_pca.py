@@ -1,4 +1,5 @@
 # %%
+from numpy.linalg.linalg import LinAlgError
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ class ResilienceStressIndex():
         self.df_pca_ = {}
         self.df_pc_centroids_ = {}
         self.df_pca_centroids_ = {}
-        self.distances_ = []
+        self.distances_ = {}
 
     def convert_to_dict(self, data):
         temp_dict = {}
@@ -216,8 +217,7 @@ class ResilienceStressIndex():
                                             (self.df_pc_centroids_.get(subject).SkinConductance_diff2[0]-self.df_pc_centroids_.get(subject).SkinConductance_diff2[element])**2+\
                                             (self.df_pc_centroids_.get(subject).CorporalTemperature_diff2[0]-self.df_pc_centroids_.get(subject).CorporalTemperature_diff2[element])**2) for element in range(1, len(self.df_pc_centroids_.get(subject)))]
         # This will get you the dataframe
-        print(distances_dict)
-        self.distances_ = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
+        self.distances_['euclidean'] = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
 
         return self
     
@@ -253,8 +253,9 @@ with open('subjects_ksize_1001.data','rb') as data:
     df = pickle.load(data)
 end = time()
 print('Done importing in '+str(round(end-st,2))+' seconds.')
-# %%
+
 model = ResilienceStressIndex(df)
+model.calculate_centroids()
 # %% [markdown]
 '''
 First, try to get if the data is normal for all columns.
@@ -319,8 +320,6 @@ with five componenets no much difference can be notice.
 '''
 # %%
 model.calculate_centroids_pca()
-# %%
-model.calculate_centroids()
 # %% [markdown]
 '''
 441(0.7271), 440(0.6918), 437(0.6357), 425(0.7121), 424(0.6476), 415(0.6525), 414(0.7436), 318 (0.5920)
@@ -338,61 +337,22 @@ Now we can calculate the distances
 # %%
 from scipy.spatial.distance import mahalanobis
 
-def mahalanobis_distance(resample=False):
-    if resample == True:
-        print('Resampling data...')
-        st = time()
-        temp_ = model.df_pc_.copy()
-        temp = model.resampling_df(temp_, decimals=0)
-        df_pc = model.add_phase(temp)
-        end = time()
-        print('Finished re-sampling data in: '+str(round(end-st,2))+' seconds.')
-    else:
-        df_pc = model.df_pc_.copy()
-        for values in df_pc.values():
-            values.drop('Subject',axis=1,inplace=True)
-    
+def mahalanobis_distance():
     distances_dict = {}
-    for subject in df_pc.keys()[0]:
-        st = time()
-        temp = []
-        # Get only the values in phase 1 of the subject to compare the centroids
-        V = np.cov(df_pc.get(subject).drop(['Time'],axis=1).loc[(df_pc.get(subject).drop(['Time'],axis=1)['Phase'] == 'phase1'),:].values.T)
-        IV = np.linalg.inv(V)
-        print('Subject: {}'.format(subject))
-        for phase in range(1, len(df_pc.get(subject))):
-            array_1 = df_pc.get(subject).drop(['Time','Phase'],axis=1).loc[0].values
-            array_2 = df_pc.get(subject).drop(['Time','Phase'],axis=1).loc[phase].values
-            print('Calculating')
-            temp.append(mahalanobis(array_1, array_2, IV))
-        
-        end = time()
+    for subject in model.df_pc_.keys():
+        cov = np.cov(model.df_pc_.get(subject).drop(['Time','Phase','Subject'],axis=1).values.T)
+        try:
+            inv_covmat = scipy.linalg.inv(cov)
+            distances_dict[subject] = [mahalanobis(model.df_pc_centroids_.get(subject).drop(['Phase','Time'],axis=1).loc[0].values,model.df_pc_centroids_.get(subject).drop(['Phase','Time'],axis=1).loc[element].values,inv_covmat) for element in range(1, len(model.df_pc_centroids_.get(subject)))]
+        except scipy.linalg.LinAlgError:
+            pass
+    model.distances_['mahalanobis'] = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
 
-        distances_dict[subject] = temp
-    
-    distances = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
-
-    return distances
-
-def mahalanobis(x=None, data=None, cov=None):
-    """Compute the Mahalanobis Distance between each row of x and the data  
-    x    : vector or matrix of data with, say, p columns.
-    data : ndarray of the distribution from which Mahalanobis distance of each observation of x is to be computed.
-    cov  : covariance matrix (p x p) of the distribution. If None, will be computed from data.
-    """
-    x_minus_mu = x - np.mean(data)
-    if not cov:
-        cov = np.cov(data.values.T)
-    inv_covmat = scipy.linalg.inv(cov)
-    left_term = np.dot(x_minus_mu, inv_covmat)
-    mahal = np.dot(left_term, x_minus_mu.T)
-    return mahal.diagonal()
-
-mahalanobis(x=model.df_pc_.get(100).drop(['Time','Subject'],axis=1)[(model.df_pc_.get(100).drop(['Time','Subject'],axis=1)['Phase']=='phase1')].drop('Phase',axis=1),data=model.df_pc_centroids_.get(100).drop(['Phase','Time'],axis=1).loc[1])
-    
+    return None
 # %%
-#model.euclidean_distance()
-mahalanobis_distance(resample=False)
+model.euclidean_distance()
+# %%
+mahalanobis_distance()
 # %% [markdown]
 '''
 The Manhalanobis distance cannot be calculated as we have many points that are similar

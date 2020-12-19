@@ -7,15 +7,11 @@ import matplotlib.pyplot as plt
 import os 
 from glob import glob
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-import time
 import pickle
 import time
-import multiprocessing as mp
 
 from tqdm.auto import tqdm
 from sys import stdout
-
-from scipy import fft
 
 class PreprocessRSI():
 
@@ -107,7 +103,6 @@ class PreprocessRSI():
             return np.mean(y, axis=1)
             
     def apply_filter(self, subject, k_size, type='median'):
-        print('Subject: '+str(subject))
         df_filtered = self.df_pc_[subject].copy()
         # Eliminate the first 0.1 sec
         df_filtered = df_filtered.loc[500:]
