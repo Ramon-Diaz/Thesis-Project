@@ -172,14 +172,11 @@ class PreprocessRSI():
         print('Applying Median Filter...')
         st = time.time()
         # Initialize the pool
-        pool = mp.Pool(mp.cpu_count())
-        #with tqdm(total=len(self.df_pc_), file=stdout, position=0, leave=True) as pbar:
-        #    for i in tqdm(range(len(self.df_pc_)), position=0, leave=True, desc='  Subject'):
+        with tqdm(total=len(self.df_pc_), file=stdout, position=0, leave=True) as pbar:
+            for i in tqdm(range(len(self.df_pc_)), position=0, leave=True, desc='  Subject'):
                 #pbar.set_description('  Subject')
-        #        self.df_pc_filtered_.append(self.apply_filter(i,k_size))
-        #        pbar.update(1)
-        self.df_pc_filtered_ = pool.starmap_async(self.apply_filter, [(i, k_size) for i in range(len(self.df_pc_))]).get()
-        pool.close()
+                self.df_pc_filtered_.append(self.apply_filter(i,k_size))
+                pbar.update(1)
         end = time.time()
         print('Time: '+str(round((end-st)/60,2))+' minutes.')
 
@@ -187,7 +184,7 @@ class PreprocessRSI():
 
     def export_pickle(self):
         print('Exporting data...')
-        with open('subjects.data','wb') as data:
+        with open('no_scaled_subjects.data','wb') as data:
             pickle.dump(self.df_pc_filtered_, data)
         print('DONE!!')
 
@@ -233,4 +230,3 @@ power = np.abs(yf)**2
 peak_freq = xf[power.argmax()]
 #plt.show()
 '''
-# %%
