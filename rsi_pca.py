@@ -1,5 +1,4 @@
 # %%
-from numpy.linalg.linalg import LinAlgError
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -246,6 +245,19 @@ class ResilienceStressIndex():
         except KeyError:
             print('Key Error: the maximum stress delta value of the samples is not calculated yet, try running the method "calculate_index" first.')
         return self
+    
+    def mahalanobis_distance(self):
+        distances_dict = {}
+        for subject in self.df_pc_.keys():
+            cov = np.cov(self.df_pc_.get(subject).drop(['Time','Phase','Subject'],axis=1).values.T)
+            try:
+                inv_covmat = scipy.linalg.inv(cov)
+                distances_dict[subject] = [scipy.spatial.distance.mahalanobis(self.df_pc_centroids_.get(subject).drop(['Phase','Time'],axis=1).loc[0].values,self.df_pc_centroids_.get(subject).drop(['Phase','Time'],axis=1).loc[element].values,inv_covmat) for element in range(1, len(self.df_pc_centroids_.get(subject)))]
+            except scipy.linalg.LinAlgError:
+                pass
+        self.distances_['mahalanobis'] = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
+
+        return None
 # %%
 print('Importing the data...')
 st = time()
@@ -335,30 +347,13 @@ Now we can calculate the distances
 # %% [markdown]
 # ## Calculating distances
 # %%
-from scipy.spatial.distance import mahalanobis
 
-def mahalanobis_distance():
-    distances_dict = {}
-    for subject in model.df_pc_.keys():
-        cov = np.cov(model.df_pc_.get(subject).drop(['Time','Phase','Subject'],axis=1).values.T)
-        try:
-            inv_covmat = scipy.linalg.inv(cov)
-            distances_dict[subject] = [mahalanobis(model.df_pc_centroids_.get(subject).drop(['Phase','Time'],axis=1).loc[0].values,model.df_pc_centroids_.get(subject).drop(['Phase','Time'],axis=1).loc[element].values,inv_covmat) for element in range(1, len(model.df_pc_centroids_.get(subject)))]
-        except scipy.linalg.LinAlgError:
-            pass
-    model.distances_['mahalanobis'] = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
-
-    return None
 # %%
 model.euclidean_distance()
 # %%
-mahalanobis_distance()
+model.mahalanobis_distance()
 # %% [markdown]
 '''
-The Manhalanobis distance cannot be calculated as we have many points that are similar
-between observations so in many cases we have a singular matrix. The centroids cannot be used as
-the number of dimension exceeds the number of observations por lo que falla
-
 We need to check correlation between variables and exclude them in the euclidean distance
 in the self.df_pc_centroids.get(subject)
 
@@ -380,8 +375,6 @@ To avoid loose of data:
 2. Get an index that gets the level of homogenity or heterogeneity of the clusters.
 
 '''
-# %%
-#model.distances_
 # %%
 import seaborn as sns
 
