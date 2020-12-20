@@ -85,7 +85,7 @@ class ResilienceStressIndex():
 
     def create_pca(self, resample=False):
         # Features to transform and implement
-        features = ['Time', 'Electromyography', 'BloodVolume', 'Breathing','SkinConductance', 'CorporalTemperature']
+        variance_dict = {}
         if resample == True:
             print('Resampling data...')
             st = time()
@@ -97,25 +97,25 @@ class ResilienceStressIndex():
         else:
             temp = self.df_pc_.copy()
         print('Training and transforming PCA...')
+
         with tqdm(total=len(temp), file=stdout) as pbar:
             for key, data in temp.items():
                 pbar.set_description('Subject '+str(key))
                 # Separating out the features
-                x_ = data.loc[:,features].values
+                x_ = data.drop(['Time','Subject','Phase'],axis=1).values
                 # Transform for linearity with power transformation
                 pt = PowerTransformer(method='yeo-johnson', standardize=True)
                 x = pt.fit_transform(x_)
                 # PCA instance
-                pca = PCA(n_components=4, random_state=1)
+                pca = PCA(n_components=9, random_state=1)
                 # Fitting and transforming the data
                 principalComponents = pca.fit_transform(x)
                 # Creating Dataframe of transformed data
-                principalDf = pd.DataFrame(data = principalComponents, columns = ['PC1', 'PC2','PC3','PC4'])
+                principalDf = pd.DataFrame(data = principalComponents, columns = ['PC'+str(n_comp) for n_comp in range(1,pca.n_components_+1)])
                 # Concatenate the phase data
                 finalDf = pd.concat([principalDf, data['Phase']], axis=1)
                 self.df_pca_[key] = finalDf
-                print('Subject: '+str(key))
-                print(pca.explained_variance_ratio_)
+
                 pbar.update(1)
 
         return self
@@ -256,6 +256,8 @@ class ResilienceStressIndex():
             except scipy.linalg.LinAlgError:
                 pass
         self.distances_['mahalanobis'] = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
+        # strange behaviour in subject 291
+        self.distances_['mahalanobis'] = self.distances_.get('mahalanobis').drop(291,axis=0)
 
         return None
 # %%
@@ -268,6 +270,13 @@ print('Done importing in '+str(round(end-st,2))+' seconds.')
 
 model = ResilienceStressIndex(df)
 model.calculate_centroids()
+# %% [markdown]
+'''
+The mean average of the percentage of explained variance of
+97.6697% and a std of 1.7409% with 9 componenets. Up to 10 componenets
+the changes were insignificant for this study. Mean = 96.2151
+and std of 2.3353
+'''
 # %% [markdown]
 '''
 First, try to get if the data is normal for all columns.
@@ -345,9 +354,9 @@ model.plot_pca_centroid(414, export=False)
 Now we can calculate the distances
 '''
 # %% [markdown]
+'''
 # ## Calculating distances
-# %%
-
+'''
 # %%
 model.euclidean_distance()
 # %%
@@ -494,8 +503,9 @@ def calculate_index_modified(distances):
 # %%
 dist_modi = calculate_index_modified(model.distances_)
 dist_modi.sort_values('Resilience_Index',axis=0,ascending=True)
-# %% [markdown]
-
+# %%
+dist_mahal = calculate_index_modified(model.distances_.get('mahalanobis'))
+dist_mahal.sort_values('Resilience_Index',axis=0,ascending=True)
 # %%
 model.plot_freq(376, [1,2,3,4,5])
 # %% [markdown]
