@@ -179,7 +179,7 @@ class PreprocessRSI():
 
     def export_pickle(self):
         print('Exporting data...')
-        with open('no_scaled_subjects.data','wb') as data:
+        with open('subjects_151.data','wb') as data:
             pickle.dump(self.df_pc_filtered_, data)
         print('DONE!!')
 
@@ -193,8 +193,8 @@ if __name__ == "__main__":
     #model.plot_freq(model.df_pc_, 57, groups=[1,2,3,4,5], export=False)
     model.execute_median_filter(151)
     model.add_nontime_dependencies()
-    #model.fit_scaler(StandardScaler())
-    #model.transform_scaler()
+    model.fit_scaler(StandardScaler())
+    model.transform_scaler()
 
     end_all = time.time()
     print('Done.\nTime: '+str(round((end_all-st_all)/60,2))+' minutes.')

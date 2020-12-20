@@ -43,6 +43,8 @@ def get_results(df, model):
     return None
 
 def train_cluster(dataset, model):
+    print('Training the model...')
+    st = time()
     # Initialize the variables
     scores = {}
     # Split x and y as we know the labels
@@ -53,19 +55,23 @@ def train_cluster(dataset, model):
     # Compute the AUC score
     scores['auc'] = roc_auc_score(y, y_pred)
     scores['f1'] = f1_score(y, y_pred)
+    end = time()
+    print('Done importing in {:.2f} seconds.'.format(end-st))
 
     return scores
 
-from sklearn.model_selection import StratifiedKFold
+from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import AffinityPropagation
 from sklearn.metrics import roc_auc_score, f1_score
 
 # %%
-data = importdata('subjects_ksize_1001.data')
+data = importdata('subjects_151.data')
 df = convert_to_dict(data)
 
 model_list = (
-                ('AffinityPropagation', AffinityPropagation(n_clusters=2)),
+                ('AffinityPropagation', AffinityPropagation(verbose=True)),
+                ('Agglomerative', AgglomerativeClustering(n_clusters=2)),
 )
 # %%
-result = train_cluster(df.get(100) , model_list[0][1])
+result = train_cluster(df.get(100)[(df.get(100)['Phase'] == 'phase1') | (df.get(100)['Phase'] == 'phase2')], model_list[1][1])
+# %%
