@@ -75,11 +75,12 @@ def train_cluster(dataset, model):
     y_pred = model.fit_predict(X)
     # Compute the AUC score
     auc = roc_auc_score(y, y_pred)
-    scores.append(1-auc if auc<0.5 else auc)
+    #scores.append(1-auc if auc<0.5 else auc)
+    scores.append(auc)
     scores.append(f1_score(y, y_pred))
     end = time()
-    print('Done training in {:.2f} minutes.'.format((end-st)/60))
-    print('AUC {:.4f} and F1-Score: {:.2f}'.format(scores[0],scores[1]))
+    #print('Done training in {:.2f} minutes.'.format((end-st)/60))
+    #print('AUC {:.4f} and F1-Score: {:.2f}'.format(scores[0],scores[1]))
 
     return scores
 
