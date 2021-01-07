@@ -87,12 +87,26 @@ def train_cluster(dataset, model):
 
 def execute_all(models, subjects_dict):
     result = {}
-    #for subject in subjects_dict.keys():
-    for subject in [100,414]:
-        print('Subject: {}'.format(subject))
+    sub = 1
+    for subject in subjects_dict.keys():
+    #for subject in [100,414]:
+        print('Subject: {} Progress:({}/{})'.format(subject,sub,len(subjects_dict.keys())))
         result[subject] = get_results(subjects_dict.get(subject), models)
+        sub += 1
 
     return result
+
+def results_to_dataframe(results_):
+        temp = {(level1_key, level2_key, level3_key): values
+                for level1_key, level2_dict in results_.items()
+                for level2_key, level3_dict in level2_dict.items()
+                for level3_key, values      in level3_dict.items()}
+        temp_df = pd.DataFrame(temp).T
+        temp_df.columns = ['AUC','F1']
+        temp_df = temp_df.reset_index().rename(columns={'level_0':'Subject','level_1':'Phase_vs_phase','level_2':'model'})
+        temp_df.to_csv('final_results.csv', index=False)
+
+        return None
 
 # %%
 data = importdata('subjects_151.data')
@@ -102,9 +116,18 @@ model_list = (
                 ('Birch', Birch(n_clusters=2, threshold=0.5)),
                 ('KMeans',KMeans(n_clusters=2)),
                 ('GaussianMixture',GaussianMixture(n_components=2)),
-                ('Agglomerative', AgglomerativeClustering(n_clusters=2, affinity = 'euclidean', linkage='ward')),
+                #('Agglomerative', AgglomerativeClustering(n_clusters=2, affinity = 'euclidean', linkage='ward')),
 )
 # %%
-result = execute_all(model_list, df)
+ph5_df = {}
+missing_info = [122,214,218,238,218,240,241,242,243,247,248,249,250,252,254,255,257,259,266,267,268,286,291,329,330,331,331,333,334]
+for key, values in df.items():
+    if 'phase5' in values.Phase.unique() and key not in missing_info:
+        ph5_df[key] = values
 # %%
-
+result = execute_all(model_list, ph5_df)
+# %%
+results_to_dataframe(result)
+# %%
+len(ph5_df)
+# %%
