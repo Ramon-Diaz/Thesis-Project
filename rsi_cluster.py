@@ -61,12 +61,13 @@ def get_results(df, models):
     return result
 
 def train_cluster(dataset, model):
-    print('Training the model...')
+    #print('Training the model...')
     st = time()
     # Initialize the variables
     scores = []
+    features = ['Electromyography', 'BloodVolume', 'Breathing','SkinConductance', 'CorporalTemperature']
     # Split x and y as we know the labels
-    X = dataset.drop(['Time','Subject','Phase'],axis=1).values
+    X = dataset[features].values
     y_ = dataset['Phase']
     # label binarize the target class
     classes = y_.unique()
@@ -75,8 +76,8 @@ def train_cluster(dataset, model):
     y_pred = model.fit_predict(X)
     # Compute the AUC score
     auc = roc_auc_score(y, y_pred)
-    #scores.append(1-auc if auc<0.5 else auc)
-    scores.append(auc)
+    scores.append(1-auc if auc<0.5 else auc)
+    #scores.append(auc)
     scores.append(f1_score(y, y_pred))
     end = time()
     #print('Done training in {:.2f} minutes.'.format((end-st)/60))
@@ -96,13 +97,14 @@ def execute_all(models, subjects_dict):
 # %%
 data = importdata('subjects_151.data')
 df = convert_to_dict(data)
-
+# %%
 model_list = (
-                ('Agglomerative', AgglomerativeClustering(n_clusters=2, affinity = 'euclidean', linkage='ward')),
                 ('Birch', Birch(n_clusters=2, threshold=0.5)),
                 ('KMeans',KMeans(n_clusters=2)),
                 ('GaussianMixture',GaussianMixture(n_components=2)),
+                ('Agglomerative', AgglomerativeClustering(n_clusters=2, affinity = 'euclidean', linkage='ward')),
 )
 # %%
 result = execute_all(model_list, df)
 # %%
+
