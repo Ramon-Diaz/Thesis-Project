@@ -510,6 +510,3 @@ dist_mahal.sort_values('Resilience_Index',axis=0,ascending=True)
 model.plot_freq(376, [1,2,3,4,5])
 # %% [markdown]
 # You need to consider that powertransformation does a normalization and that FIRST you need to transform then scale.
-
-# %%
-
