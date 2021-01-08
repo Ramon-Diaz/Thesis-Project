@@ -185,11 +185,21 @@ class PreprocessRSI():
 
         return self
 
+    def filter_subjects(self):
+        ph5_df = []
+        missing_info = [122,214,218,238,218,240,241,242,243,247,248,249,250,252,254,255,257,259,266,267,268,286,291,329,330,331,331,333,334]
+        for subject in self.df_pc_:
+            if 'phase5' in subject.Phase.unique() and int(subject.Subject.iloc[0][4:]) not in missing_info:
+                ph5_df.append(subject)
+
+        return ph5_df
+
 # %%
 if __name__ == "__main__":
     st_all = time.time()
 
     model = PreprocessRSI('ProComp')
+    model.df_pc_ = model.filter_subjects()
     #model.plot_freq(model.df_pc_, 57, groups=[1,2,3,4,5], export=False)
     model.execute_median_filter(151)
     model.add_nontime_dependencies()
