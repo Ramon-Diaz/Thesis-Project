@@ -68,6 +68,7 @@ def train_cluster(dataset, model):
     features = ['Electromyography', 'BloodVolume', 'Breathing','SkinConductance', 'CorporalTemperature']
     # Split x and y as we know the labels
     X = dataset[features].values
+    #X = dataset.drop(['Time','Subject','Phase'], axis=1).values
     y_ = dataset['Phase']
     # label binarize the target class
     classes = y_.unique()
@@ -116,18 +117,10 @@ model_list = (
                 ('Birch', Birch(n_clusters=2, threshold=0.5)),
                 ('KMeans',KMeans(n_clusters=2)),
                 ('GaussianMixture',GaussianMixture(n_components=2)),
-                #('Agglomerative', AgglomerativeClustering(n_clusters=2, affinity = 'euclidean', linkage='ward')),
+                ('Agglomerative', AgglomerativeClustering(n_clusters=2, affinity = 'euclidean', linkage='ward')),
 )
 # %%
-ph5_df = {}
-missing_info = [122,214,218,238,218,240,241,242,243,247,248,249,250,252,254,255,257,259,266,267,268,286,291,329,330,331,331,333,334]
-for key, values in df.items():
-    if 'phase5' in values.Phase.unique() and key not in missing_info:
-        ph5_df[key] = values
-# %%
-result = execute_all(model_list, ph5_df)
+result = execute_all(model_list, df)
 # %%
 results_to_dataframe(result)
-# %%
-len(ph5_df)
 # %%
