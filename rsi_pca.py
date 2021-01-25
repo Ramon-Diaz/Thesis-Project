@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 14})
 import scipy
 import seaborn as sns
 from time import time
@@ -65,6 +66,7 @@ class ResilienceStressIndex():
                 df['Time'] = df['Time'].astype('int')
                 # Add to dictionary
                 temp[key] = df
+                
                 pbar.update(1)
 
         return temp
@@ -72,7 +74,7 @@ class ResilienceStressIndex():
     def add_phase(self, data):
         for values in data.values():
             values['Phase'] = 0
-            phase = range(1, values.shape[0]//120+1)
+            phase = range(1, values.shape[0]//120+(values.shape[0] % 120 > 0)+1)
             i = 0
             for phases in phase:
                 if i == 0:
@@ -85,7 +87,6 @@ class ResilienceStressIndex():
 
     def create_pca(self, resample=False):
         # Features to transform and implement
-        variance_dict = {}
         if resample == True:
             print('Resampling data...')
             st = time()
@@ -102,12 +103,18 @@ class ResilienceStressIndex():
             for key, data in temp.items():
                 pbar.set_description('Subject '+str(key))
                 # Separating out the features
-                x_ = data.drop(['Time','Subject','Phase'],axis=1).values
+                if resample == True:
+                    x_ = data[['Electromyography','BloodVolume','Breathing','SkinConductance','CorporalTemperature']].values
+                else:
+                    x_ = data.drop(['Time','Subject','Phase'],axis=1).values
                 # Transform for linearity with power transformation
                 pt = PowerTransformer(method='yeo-johnson', standardize=True)
                 x = pt.fit_transform(x_)
                 # PCA instance
-                pca = PCA(n_components=9, random_state=1)
+                if resample == True:
+                    pca = PCA(n_components=2, random_state=1)
+                else:
+                    pca = PCA(n_components=9, random_state=1)
                 # Fitting and transforming the data
                 principalComponents = pca.fit_transform(x)
                 # Creating Dataframe of transformed data
@@ -138,7 +145,6 @@ class ResilienceStressIndex():
         ax = fig.add_subplot(1,1,1) 
         ax.set_xlabel('PC1', fontsize = 15)
         ax.set_ylabel('PC2', fontsize = 15)
-        #ax.set_title('PCA of Subject', fontsize = 20)
         # Plot
         targets = self.df_pca_.get(subject).Phase.unique()
         for target in targets:
@@ -328,7 +334,7 @@ for subject in [414,440,437]:
 As many subjects present multicolinearity in at least one variable we can justify
 the implementation of PCA and euclidean distance.
 
-As a next step we can get manhaladabian distance
+As a next step we can get manhalanobis distance
 '''
 # %%
 model.plot_freq(data_num=414, export=False)
@@ -347,8 +353,8 @@ model.calculate_centroids_pca()
 Ploting one subject pca centroids of each phase
 '''
 # %%
-model.plot_pca(subject=414, export=False)
-model.plot_pca_centroid(414, export=False)
+model.plot_pca(subject=100, export=False)
+model.plot_pca_centroid(100, export=False)
 # %% [markdown]
 '''
 Now we can calculate the distances

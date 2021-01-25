@@ -134,10 +134,10 @@ data = importdata('subjects_151.data')
 df = convert_to_dict(data)
 # %%
 model_list = (
-                #('Birch', Birch(n_clusters=2, threshold=0.2)),
-                #('KMeans',KMeans(n_clusters=2)),
-                #('GaussianMixture',GaussianMixture(n_components=2)),
-                #('Agglomerative', AgglomerativeClustering(n_clusters=2, affinity = 'euclidean', linkage='ward')),
+                ('Birch', Birch(n_clusters=2, threshold=0.2)),
+                ('KMeans',KMeans(n_clusters=2)),
+                ('GaussianMixture',GaussianMixture(n_components=2)),
+                ('Agglomerative', AgglomerativeClustering(n_clusters=2, affinity = 'euclidean', linkage='ward')),
                 ('SpectralClustering', SpectralClustering(n_clusters=2, n_jobs=-1, affinity='rbf')),
 )
 # %%
