@@ -21,6 +21,7 @@ class ResilienceStressIndex():
         self.df_pc_centroids_ = {}
         self.df_pca_centroids_ = {}
         self.distances_ = {}
+        self.df_pca_variance_ = {}
 
     def convert_to_dict(self, data):
         temp_dict = {}
@@ -85,7 +86,7 @@ class ResilienceStressIndex():
         
         return data
 
-    def create_pca(self, resample=False):
+    def create_pca(self, resample=False, get_variance=False):
         # Features to transform and implement
         if resample == True:
             print('Resampling data...')
@@ -111,17 +112,34 @@ class ResilienceStressIndex():
                 pt = PowerTransformer(method='yeo-johnson', standardize=True)
                 x = pt.fit_transform(x_)
                 # PCA instance
-                if resample == True:
+                if resample == True and get_variance==False:
                     pca = PCA(n_components=2, random_state=1)
-                else:
-                    pca = PCA(n_components=9, random_state=1)
-                # Fitting and transforming the data
-                principalComponents = pca.fit_transform(x)
-                # Creating Dataframe of transformed data
-                principalDf = pd.DataFrame(data = principalComponents, columns = ['PC'+str(n_comp) for n_comp in range(1,pca.n_components_+1)])
-                # Concatenate the phase data
-                finalDf = pd.concat([principalDf, data['Phase']], axis=1)
-                self.df_pca_[key] = finalDf
+                    principalComponents = pca.fit_transform(x)
+                    # Creating Dataframe of transformed data
+                    principalDf = pd.DataFrame(data = principalComponents, columns = ['PC'+str(n_comp) for n_comp in range(1,pca.n_components_+1)])
+                    # Concatenate the phase data
+                    finalDf = pd.concat([principalDf, data['Phase']], axis=1)
+                    self.df_pca_[key] = finalDf
+
+                elif resample==False and get_variance == True:
+                    temp = {}
+                    for number_components in range(1, 16):
+                        pca = PCA(n_components=number_components)
+                        pca.fit(x)
+                        # Get the explained variance and save it
+                        #print('N_components {0}, Explained Var: {1}'.format(pca.n_components_,np.sum(pca.explained_variance_ratio_)))
+                        temp[pca.n_components_] = np.sum(pca.explained_variance_ratio_)
+                    self.df_pca_variance_[key] = temp
+
+                elif resample==False and get_variance==False:
+                    pca = PCA(n_components=15)
+                    # Fitting and transforming the data
+                    principalComponents = pca.fit_transform(x)
+                    # Creating Dataframe of transformed data
+                    principalDf = pd.DataFrame(data = principalComponents, columns = ['PC'+str(n_comp) for n_comp in range(1,pca.n_components_+1)])
+                    # Concatenate the phase data
+                    finalDf = pd.concat([principalDf, data['Phase']], axis=1)
+                    self.df_pca_[key] = finalDf
 
                 pbar.update(1)
 
@@ -263,19 +281,30 @@ class ResilienceStressIndex():
                 pass
         self.distances_['mahalanobis'] = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
         # strange behaviour in subject 291
-        self.distances_['mahalanobis'] = self.distances_.get('mahalanobis').drop(291,axis=0)
+        #self.distances_['mahalanobis'] = self.distances_.get('mahalanobis').drop(291,axis=0)
 
         return None
 # %%
 print('Importing the data...')
 st = time()
-with open('subjects_ksize_1001.data','rb') as data:
+with open('subjects_151.data','rb') as data:
     df = pickle.load(data)
 end = time()
 print('Done importing in '+str(round(end-st,2))+' seconds.')
 
 model = ResilienceStressIndex(df)
 model.calculate_centroids()
+# %%
+def results_to_dataframe(results_):
+        temp = {(level1_key, level2_key): values
+                for level1_key, level2_dict in results_.items()
+                for level2_key, values in level2_dict.items()}
+        temp_df = pd.DataFrame(temp, index=['explained_variance_ratio']).T
+        temp_df = temp_df.reset_index().rename(columns={'level_0':'subject','level_1':'n_components'})
+        temp_df.to_csv('explained_variance_results.csv', index=False)
+
+        return None
+#results_to_dataframe(model.df_pca_variance_)
 # %% [markdown]
 '''
 The mean average of the percentage of explained variance of
@@ -339,7 +368,7 @@ As a next step we can get manhalanobis distance
 # %%
 model.plot_freq(data_num=414, export=False)
 # %%
-model.create_pca(resample=False)
+model.create_pca(resample=False, get_variance=False)
 # %% [markdown]
 '''
 The PCA with four components has a explained variance bigger than 90%
