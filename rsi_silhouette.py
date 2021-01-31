@@ -37,11 +37,16 @@ def convert_to_dict(data):
 def get_results(df):
     temp = df.copy()
     test_df = (
-                    ('phase1_vs_phase2',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase2')]),
-                    ('phase1_vs_phase3',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase3')]),
-                    ('phase1_vs_phase4',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase4')]),
-                    ('phase1_vs_phase5',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase5')]),
-                )
+            ('phase1_vs_phase3',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase3')]),
+            ('phase1_vs_phase5',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase5')]),
+            ('phase3_vs_phase5',temp[(temp['Phase'] == 'phase3') | (temp['Phase'] == 'phase5')]),
+            ('phase1_vs_phase2',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase2')]),
+            ('phase1_vs_phase4',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase4')]),
+            ('phase3_vs_phase2',temp[(temp['Phase'] == 'phase3') | (temp['Phase'] == 'phase2')]),
+            ('phase3_vs_phase4',temp[(temp['Phase'] == 'phase3') | (temp['Phase'] == 'phase4')]),
+            ('phase5_vs_phase2',temp[(temp['Phase'] == 'phase5') | (temp['Phase'] == 'phase2')]),
+            ('phase5_vs_phase4',temp[(temp['Phase'] == 'phase5') | (temp['Phase'] == 'phase4')]) 
+        )
     result = {}
     with tqdm(total=len(test_df), file=stdout) as pbar:
         for data_id, dataset in test_df:
