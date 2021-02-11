@@ -269,8 +269,8 @@ class ResilienceStressIndex():
         except KeyError:
             print('Key Error: the maximum stress delta value of the samples is not calculated yet, try running the method "calculate_index" first.')
         return self
-    
-    def mahalanobis_distance(self):
+
+    def mahalanobis_distance_original(self):
         distances_dict = {}
         for subject in self.df_pc_.keys():
             cov = np.cov(self.df_pc_.get(subject).drop(['Time','Phase','Subject'],axis=1).values.T)
@@ -284,10 +284,44 @@ class ResilienceStressIndex():
         #self.distances_['mahalanobis'] = self.distances_.get('mahalanobis').drop(291,axis=0)
 
         return None
+    
+    def mahalanobis_distance(self):
+                
+        self.distances_['mahalanobis'] = pd.DataFrame(columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5'], index=model.df_pc_.keys())
+        
+        with tqdm(total=len(self.df_pc_.keys()), file=stdout) as pbar:
+            # Iterate through each subject
+            for subject, temp in self.df_pc_.items():
+                pbar.set_description('Subject '+str(subject)) 
+                mahal_by_subject = []
+                test_df = (
+                    ('phase1_vs_phase2',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase2')]),
+                    ('phase1_vs_phase3',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase3')]),
+                    ('phase1_vs_phase4',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase4')]),
+                    ('phase1_vs_phase5',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase5')]),
+                ) 
+                # Iterate through each pair of phases
+                for _, phase_data in test_df:
+                    mahal_by_phase = []
+                    cov = np.cov(phase_data.drop(['Time','Phase','Subject'],axis=1).values.T)
+                    #try:
+                    inv_covmat = scipy.linalg.inv(cov)
+                    mahal_by_phase = [scipy.spatial.distance.mahalanobis(self.df_pc_centroids_.get(subject).drop(['Phase','Time'],axis=1).loc[0].values, 
+                                                                        phase_data.drop(['Time','Phase','Subject'],axis=1).loc[element].values,
+                                                                        inv_covmat) 
+                                                                        for element in phase_data[ (phase_data.Phase==phase_data.Phase.tail(1).values[0]) ].index.values]
+                    #except scipy.linalg.LinAlgError:
+                    #    pass
+                    mahal_by_subject.append(np.mean(mahal_by_phase))
+        
+                self.distances_.get('mahalanobis').loc[subject] = mahal_by_subject
+                pbar.update(1)
+
+        return None
 # %%
 print('Importing the data...')
 st = time()
-with open('subjects_151.data','rb') as data:
+with open('subjects_151_new.data','rb') as data:
     df = pickle.load(data)
 end = time()
 print('Done importing in '+str(round(end-st,2))+' seconds.')
@@ -366,7 +400,7 @@ the implementation of PCA and euclidean distance.
 As a next step we can get manhalanobis distance
 '''
 # %%
-model.plot_freq(data_num=414, export=False)
+model.plot_freq(data_num=455, export=False)
 # %%
 model.create_pca(resample=False, get_variance=False)
 # %% [markdown]
@@ -382,8 +416,8 @@ model.calculate_centroids_pca()
 Ploting one subject pca centroids of each phase
 '''
 # %%
-model.plot_pca(subject=100, export=False)
-model.plot_pca_centroid(100, export=False)
+model.plot_pca(subject=455, export=False)
+model.plot_pca_centroid(455, export=False)
 # %% [markdown]
 '''
 Now we can calculate the distances
@@ -420,88 +454,6 @@ To avoid loose of data:
 
 '''
 # %%
-import seaborn as sns
-
-def calculate_index(distances):
-    distances['Max_Delta_Stress'] = np.nan
-    distances['Recovery_Delta_Last_Phase'] = np.nan
-    distances['Resilience_Index'] = np.nan
-    # Calculate of maximum point of stress before the last stressor phase and get the recovery phase delta
-    for element in distances.index.values:
-        if pd.isnull(distances['Ph1-Ph6'].loc[element]) == True:
-            if pd.isnull(distances['Ph1-Ph5'].loc[element]) == True:
-                if pd.isnull(distances['Ph1-Ph4'].loc[element]) == True:
-                    distances['Max_Delta_Stress'].loc[element] = distances['Ph1-Ph2'].loc[element]
-                    distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph3'].loc[element]
-            else:
-                distances['Max_Delta_Stress'].loc[element] = distances[['Ph1-Ph2','Ph1-Ph4']].loc[element].max()
-                distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph5'].loc[element]
-        else:
-            distances['Max_Delta_Stress'].loc[element] = distances[['Ph1-Ph2','Ph1-Ph4']].loc[element].max()
-            distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph6'].loc[element]
-    # Get the resilience index, the more positive the better resilience to stress.
-    distances['Resilience_Index'][(distances['Max_Delta_Stress'] != distances['Recovery_Delta_Last_Phase'])] = distances['Max_Delta_Stress']-distances['Recovery_Delta_Last_Phase']
-    distances['Resilience_Index'][(distances['Max_Delta_Stress'] == distances['Recovery_Delta_Last_Phase'])] = -1*distances['Recovery_Delta_Last_Phase']
-
-    sns.distplot(distances['Resilience_Index'], hist=True, kde=True, color='darkblue',hist_kws={'edgecolor':'black'})
-    plt.title('Density Plot and Histogram of Resilience Index')
-    plt.ylabel('Density')
-    plt.xlabel('Resilience Index')
-    plt.show()
-
-    sns.boxplot(x='Resilience_Index', orient='h',data=distances)
-    plt.title('Boxplot of Resilience Index')
-    plt.show()
-
-    return distances
-# %%
-regular_index = calculate_index(model.distances_.copy())
-regular_index
-# %%
-def calculate_index_recovery_factor(distances):
-    '''
-    Calculates an index value between 0 and 1, the closer to 0 the worst, the closer to 1 the more resilient.
-    '''
-    # Initialize column variables
-    distances['Max_Delta_Stress'] = np.nan
-    distances['Recovery_Delta_Last_Phase'] = np.nan
-    distances['Resilience_Index'] = np.nan   
-    # Calculate the max delta stress of each individual and its recovery delta of the last recovery phase
-    for element in distances.index.values:
-        if pd.isnull(distances['Ph1-Ph6'].loc[element]) == True:
-            if pd.isnull(distances['Ph1-Ph5'].loc[element]) == True:
-                if pd.isnull(distances['Ph1-Ph4'].loc[element]) == True:
-                    distances['Max_Delta_Stress'].loc[element] = distances['Ph1-Ph2'].loc[element]
-                    distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph3'].loc[element]
-            else:
-                distances['Max_Delta_Stress'].loc[element] = distances[['Ph1-Ph2','Ph1-Ph4']].loc[element].max()
-                distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph5'].loc[element]
-        else:
-            distances['Max_Delta_Stress'].loc[element] = distances[['Ph1-Ph2','Ph1-Ph4']].loc[element].max()
-            distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph6'].loc[element]
-    # Get the maximum value of the population of delta stress
-    population_max_delta_stress = distances['Max_Delta_Stress'].max()
-    # Get the resilience index, the more positive the better resilience to stress.
-    distances['Resilience_Index'] = distances['Max_Delta_Stress']**2/(population_max_delta_stress*distances['Recovery_Delta_Last_Phase'])
-
-    print('Population_Max_Delta_Stress: %.4f'%(population_max_delta_stress))
-    sns.distplot(distances['Resilience_Index'], hist=True, kde=True, color='darkblue',hist_kws={'edgecolor':'black'})
-    plt.title('Density Plot and Histogram of Resilience Index')
-    plt.ylabel('Density')
-    plt.xlabel('Resilience Index')
-    plt.show()
-
-    sns.boxplot(x='Resilience_Index', orient='h',data=distances)
-    plt.title('Boxplot of Resilience Index')
-    plt.show()
-
-    return distances
-# %%
-recovery_factor = calculate_index_recovery_factor(model.distances_)
-recovery_factor
-# %%
-recovery_factor.sort_values('Resilience_Index',axis=0,ascending=True)
-# %%
 def calculate_index_modified(distances):
     distances['Max_Delta_Stress'] = np.nan
     distances['Recovery_Delta_Last_Phase'] = np.nan
@@ -520,28 +472,29 @@ def calculate_index_modified(distances):
             distances['Max_Delta_Stress'].loc[element] = distances[['Ph1-Ph2','Ph1-Ph4']].loc[element].max()
             distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph6'].loc[element]
     # Get the maximum value of the population of delta stress
-    population_max_delta_stress = distances['Max_Delta_Stress'].max()
+    distances['population_max_delta_stress'] = distances['Max_Delta_Stress']-distances['Recovery_Delta_Last_Phase']
+    distances['stress_factor'] = (distances['population_max_delta_stress']-distances['population_max_delta_stress'].min())/(distances['population_max_delta_stress'].max()-distances['population_max_delta_stress'].min())
     # Get the resilience index, the more positive the better resilience to stress.
-    distances['Resilience_Index'] = (distances['Max_Delta_Stress']-distances['Recovery_Delta_Last_Phase'])/population_max_delta_stress
+    distances['Resilience_Index'] = (distances['Max_Delta_Stress']-distances['Recovery_Delta_Last_Phase'])/distances['population_max_delta_stress'].max()
 
     sns.distplot(distances['Resilience_Index'], hist=True, kde=True, color='darkblue',hist_kws={'edgecolor':'black'})
-    plt.title('Density Plot and Histogram of Resilience Index')
     plt.ylabel('Density')
     plt.xlabel('Resilience Index')
     plt.show()
 
     sns.boxplot(x='Resilience_Index', orient='h',data=distances)
-    plt.title('Boxplot of Resilience Index')
     plt.show()
 
     return distances
 # %%
-dist_modi = calculate_index_modified(model.distances_)
+dist_modi = calculate_index_modified(model.distances_.get('euclidean'))
 dist_modi.sort_values('Resilience_Index',axis=0,ascending=True)
 # %%
 dist_mahal = calculate_index_modified(model.distances_.get('mahalanobis'))
 dist_mahal.sort_values('Resilience_Index',axis=0,ascending=True)
 # %%
-model.plot_freq(376, [1,2,3,4,5])
-# %% [markdown]
-# You need to consider that powertransformation does a normalization and that FIRST you need to transform then scale.
+dist_modi
+# %%
+model.plot_freq(455, [1,2,3,4,5])
+# %%
+dist_mahal
