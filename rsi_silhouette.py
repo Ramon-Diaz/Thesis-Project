@@ -78,9 +78,10 @@ def get_metric(dataset):
 def execute_all(subjects_dict):
     result = {}
     sub = 1
-    for subject in subjects_dict.keys():
-    #for subject in [414,246,256,279,282]:
-        print('Subject: {} Progress:({}/{})'.format(subject,sub,len(subjects_dict.keys())))
+    #subjects_to_test = subjects_dict.keys():
+    subjects_to_test = range(455,462)
+    for subject in subjects_to_test:
+        print('Subject: {} Progress:({}/{})'.format(subject,sub,len(subjects_to_test)))
         result[subject] = get_results(subjects_dict.get(subject))
         sub += 1
 
@@ -94,11 +95,11 @@ def results_to_dataframe(results_):
         temp_df = pd.DataFrame(temp).T
         temp_df.columns = ['CalinskiHarabasz','Silhouette_Mahanlanobis','DaviesBouldin']
         temp_df = temp_df.reset_index().rename(columns={'level_0':'Subject','level_1':'Phase_vs_phase','level_2':'model'})
-        temp_df.to_csv('silhouette_mahalanobis_results.csv', index=False)
+        temp_df.to_csv('silhouette_mahalanobis_results_additional.csv', index=False)
 
         return None
 # %%
-data = importdata('subjects_151.data')
+data = importdata('subjects_151_new.data')
 df = convert_to_dict(data)
 # %%
 result = execute_all(df)

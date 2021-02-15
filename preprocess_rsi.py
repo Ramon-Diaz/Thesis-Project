@@ -184,7 +184,7 @@ class PreprocessRSI():
 
     def export_pickle(self):
         print('Exporting data...')
-        with open('subjects_151_new_minmax.data','wb') as data:
+        with open('subjects_151_new.data','wb') as data:
             pickle.dump(self.df_pc_filtered_, data)
         print('DONE!!')
 
@@ -221,6 +221,8 @@ model.export_pickle()
 457 Michael
 458 Karla
 459 Felipe
+460 Fernando
+461 Horacio
 '''
 # %%
 '''
