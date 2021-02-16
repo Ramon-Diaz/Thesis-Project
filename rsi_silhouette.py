@@ -88,14 +88,13 @@ def execute_all(subjects_dict):
     return result
 
 def results_to_dataframe(results_):
-        temp = {(level1_key, level2_key, level3_key): values
+        temp = {(level1_key, level2_key): values
                 for level1_key, level2_dict in results_.items()
-                for level2_key, level3_dict in level2_dict.items()
-                for level3_key, values      in level3_dict.items()}
+                for level2_key, values in level2_dict.items()}
         temp_df = pd.DataFrame(temp).T
         temp_df.columns = ['CalinskiHarabasz','Silhouette_Mahanlanobis','DaviesBouldin']
         temp_df = temp_df.reset_index().rename(columns={'level_0':'Subject','level_1':'Phase_vs_phase','level_2':'model'})
-        temp_df.to_csv('silhouette_mahalanobis_results_additional.csv', index=False)
+        temp_df.to_csv('silhouette_mahalanobis_results_new.csv', index=False)
 
         return None
 # %%
@@ -105,3 +104,5 @@ df = convert_to_dict(data)
 result = execute_all(df)
 # %%
 results_to_dataframe(result)
+
+# %%
