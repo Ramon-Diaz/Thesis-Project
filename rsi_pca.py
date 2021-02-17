@@ -285,23 +285,33 @@ class ResilienceStressIndex():
 
         return None
     
-    def mahalanobis_distance(self):
-                
-        self.distances_['mahalanobis'] = pd.DataFrame(columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5'], index=model.df_pc_.keys())
+    def mahalanobis_distance(self, load_file=None):
+        if load_file != None:
+            print('Loading file...')
+            df = pd.read_csv(load_file, index_col=0)
+            print('Success. Subjects found: {}'.format(df.shape[0]))
+            print('Calculating distance of missing subjects...')
+            missing_subjects = [subj for subj in self.df_pc_.keys() if subj not in df.index.values]
+            self.distances_['mahalanobis'] = df.copy()
+        else:
+            #self.distances_['mahalanobis'] = pd.DataFrame(columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5'], index=model.df_pc_.keys())
+            self.distances_['mahalanobis'] = pd.DataFrame(columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5'])
+            missing_subjects = self.df_pc_.keys()
         
-        with tqdm(total=len(self.df_pc_.keys()), file=stdout) as pbar:
+        with tqdm(total=len(missing_subjects), file=stdout) as pbar:
             # Iterate through each subject
-            for subject, temp in self.df_pc_.items():
+            for subject in missing_subjects:
                 pbar.set_description('Subject '+str(subject)) 
+                temp = self.df_pc_.get(subject)
                 mahal_by_subject = []
                 test_df = (
-                    ('phase1_vs_phase2',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase2')]),
-                    ('phase1_vs_phase3',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase3')]),
-                    ('phase1_vs_phase4',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase4')]),
-                    ('phase1_vs_phase5',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase5')]),
+                    ('Ph1-Ph2',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase2')]),
+                    ('Ph1-Ph3',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase3')]),
+                    ('Ph1-Ph4',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase4')]),
+                    ('Ph1-Ph5',temp[(temp['Phase'] == 'phase1') | (temp['Phase'] == 'phase5')]),
                 ) 
                 # Iterate through each pair of phases
-                for _, phase_data in test_df:
+                for phase_name, phase_data in test_df:
                     mahal_by_phase = []
                     cov = np.cov(phase_data.drop(['Time','Phase','Subject'],axis=1).values.T)
                     #try:
@@ -312,9 +322,17 @@ class ResilienceStressIndex():
                                                                         for element in phase_data[ (phase_data.Phase==phase_data.Phase.tail(1).values[0]) ].index.values]
                     #except scipy.linalg.LinAlgError:
                     #    pass
-                    mahal_by_subject.append(np.mean(mahal_by_phase))
-        
-                self.distances_.get('mahalanobis').loc[subject] = mahal_by_subject
+                    mahal_by_subject.append((phase_name, np.mean(mahal_by_phase)))
+                
+                mahal_dict_new_subject = {key:value for (key, value) in mahal_by_subject}    
+                #self.distances_.get('mahalanobis').loc[subject] = mahal_by_subject
+                self.distances_['mahalanobis'] = pd.concat([self.distances_.get('mahalanobis'),pd.DataFrame(mahal_dict_new_subject, index=[subject])])
+
+                try:
+                    self.distances_.get('mahalanobis').to_csv('mahalanobis_distances.csv')
+                except PermissionError:
+                    print('Please make sure you close the file before program finishes')            
+                
                 pbar.update(1)
 
         return None
@@ -329,7 +347,7 @@ print('Done importing in '+str(round(end-st,2))+' seconds.')
 model = ResilienceStressIndex(df)
 model.calculate_centroids()
 # %%
-def results_to_dataframe(results_):
+def explained_variance_to_dataframe(results_):
         temp = {(level1_key, level2_key): values
                 for level1_key, level2_dict in results_.items()
                 for level2_key, values in level2_dict.items()}
@@ -338,7 +356,7 @@ def results_to_dataframe(results_):
         temp_df.to_csv('explained_variance_results.csv', index=False)
 
         return None
-#results_to_dataframe(model.df_pca_variance_)
+#explained_variance_to_dataframe(model.df_pca_variance_)
 # %% [markdown]
 '''
 The mean average of the percentage of explained variance of
@@ -402,7 +420,7 @@ As a next step we can get manhalanobis distance
 # %%
 model.plot_freq(data_num=455, export=False)
 # %%
-model.create_pca(resample=False, get_variance=False)
+model.create_pca(resample=True, get_variance=False)
 # %% [markdown]
 '''
 The PCA with four components has a explained variance bigger than 90%
@@ -429,7 +447,7 @@ Now we can calculate the distances
 # %%
 model.euclidean_distance()
 # %%
-model.mahalanobis_distance()
+model.mahalanobis_distance('mahalanobis_distances.csv')
 # %% [markdown]
 '''
 We need to check correlation between variables and exclude them in the euclidean distance
@@ -493,8 +511,9 @@ dist_modi.sort_values('Resilience_Index',axis=0,ascending=True)
 dist_mahal = calculate_index_modified(model.distances_.get('mahalanobis'))
 dist_mahal.sort_values('Resilience_Index',axis=0,ascending=True)
 # %%
-dist_modi
+dist_modi.to_csv('euclidean_distances.csv')
 # %%
 model.plot_freq(455, [1,2,3,4,5])
 # %%
 dist_mahal
+# %%
