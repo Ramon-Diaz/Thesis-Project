@@ -12,6 +12,10 @@ from sklearn.preprocessing import label_binarize
 
 from sklearn.metrics import roc_auc_score, f1_score, adjusted_mutual_info_score, calinski_harabasz_score, silhouette_score, davies_bouldin_score
 
+import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 14})
+import seaborn as sns
+
 def importdata(file_name):
     print('Importing the data...')
     st = time()
@@ -104,5 +108,64 @@ df = convert_to_dict(data)
 result = execute_all(df)
 # %%
 results_to_dataframe(result)
+# %%
+def import_results(file_loc):
+    return pd.read_csv(file_loc)
 
+def subset_data(data):
+    return data[(data['Phase_vs_phase'].str.contains('phase1_'))].sort_values(['Subject','Phase_vs_phase'])
+
+def standard_data(data):
+    df = data[['Subject','Phase_vs_phase','Silhouette_Mahanlanobis']].copy()
+    df = df.pivot(index='Subject',columns='Phase_vs_phase',values='Silhouette_Mahanlanobis').reset_index()
+    df = df.loc[:,df.columns != 'Phase_vs_phase']
+    df.columns = ['Subject','Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5']
+
+    return  df.set_index('Subject',drop=True)
+
+def convert_df_to_dict(df):
+    return {key: values.groupby('Phase_vs_phase')['Silhouette_Mahanlanobis'].apply(float).to_dict() for key,values in df.groupby('Subject')}
+
+def calculate_index_modified(distances):
+    distances['Max_Delta_Stress'] = np.nan
+    distances['Recovery_Delta_Last_Phase'] = np.nan
+    distances['Resilience_Index'] = np.nan
+    # Calculate of maximum point of stress before the last stressor phase and get the recovery phase delta
+    for element in distances.index.values:
+        #if pd.isnull(distances['Ph1-Ph6'].loc[element]) == True:
+        if pd.isnull(distances['Ph1-Ph5'].loc[element]) == True:
+            if pd.isnull(distances['Ph1-Ph4'].loc[element]) == True:
+                distances['Max_Delta_Stress'].loc[element] = distances['Ph1-Ph2'].loc[element]
+                distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph3'].loc[element]
+        else:
+            distances['Max_Delta_Stress'].loc[element] = distances[['Ph1-Ph2','Ph1-Ph4']].loc[element].max()
+            distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph5'].loc[element]
+        #else:
+        #    distances['Max_Delta_Stress'].loc[element] = distances[['Ph1-Ph2','Ph1-Ph4']].loc[element].max()
+        #    distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph6'].loc[element]
+    # Get the maximum value of the population of delta stress
+    distances['population_max_delta_stress'] = distances['Max_Delta_Stress']-distances['Recovery_Delta_Last_Phase']
+    distances['stress_factor'] = (distances['Max_Delta_Stress']-distances['Max_Delta_Stress'].min())/(distances['Max_Delta_Stress'].max()-distances['Max_Delta_Stress'].min())
+    # Get the resilience index, the more positive the better resilience to stress.
+    distances['Resilience_Index'] = (distances['Max_Delta_Stress']-distances['Recovery_Delta_Last_Phase'])/distances['population_max_delta_stress'].max()
+
+    sns.distplot(distances['Resilience_Index'], hist=True, kde=True, color='darkblue',hist_kws={'edgecolor':'black'})
+    plt.ylabel('Density')
+    plt.xlabel('Resilience Index')
+    plt.show()
+
+    sns.boxplot(x='Resilience_Index', orient='h',data=distances)
+    plt.show()
+
+    return distances
+
+# %%
+data = import_results('Results/silhouette_mahalanobis_results_complete.csv')
+results = subset_data(data)
+# %%
+distances = standard_data(results)
+# %%
+dist_sil = calculate_index_modified(distances)
+# %%
+dist_sil.to_csv('silhouette_distances.csv')
 # %%

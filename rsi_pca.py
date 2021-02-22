@@ -478,20 +478,20 @@ def calculate_index_modified(distances):
     distances['Resilience_Index'] = np.nan
     # Calculate of maximum point of stress before the last stressor phase and get the recovery phase delta
     for element in distances.index.values:
-        if pd.isnull(distances['Ph1-Ph6'].loc[element]) == True:
-            if pd.isnull(distances['Ph1-Ph5'].loc[element]) == True:
-                if pd.isnull(distances['Ph1-Ph4'].loc[element]) == True:
-                    distances['Max_Delta_Stress'].loc[element] = distances['Ph1-Ph2'].loc[element]
-                    distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph3'].loc[element]
-            else:
-                distances['Max_Delta_Stress'].loc[element] = distances[['Ph1-Ph2','Ph1-Ph4']].loc[element].max()
-                distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph5'].loc[element]
+        #if pd.isnull(distances['Ph1-Ph6'].loc[element]) == True:
+        if pd.isnull(distances['Ph1-Ph5'].loc[element]) == True:
+            if pd.isnull(distances['Ph1-Ph4'].loc[element]) == True:
+                distances['Max_Delta_Stress'].loc[element] = distances['Ph1-Ph2'].loc[element]
+                distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph3'].loc[element]
         else:
             distances['Max_Delta_Stress'].loc[element] = distances[['Ph1-Ph2','Ph1-Ph4']].loc[element].max()
-            distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph6'].loc[element]
+            distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph5'].loc[element]
+        #else:
+        #    distances['Max_Delta_Stress'].loc[element] = distances[['Ph1-Ph2','Ph1-Ph4']].loc[element].max()
+        #    distances['Recovery_Delta_Last_Phase'].loc[element] = distances['Ph1-Ph6'].loc[element]
     # Get the maximum value of the population of delta stress
     distances['population_max_delta_stress'] = distances['Max_Delta_Stress']-distances['Recovery_Delta_Last_Phase']
-    distances['stress_factor'] = (distances['population_max_delta_stress']-distances['population_max_delta_stress'].min())/(distances['population_max_delta_stress'].max()-distances['population_max_delta_stress'].min())
+    distances['stress_factor'] = (distances['Max_Delta_Stress']-distances['Max_Delta_Stress'].min())/(distances['Max_Delta_Stress'].max()-distances['Max_Delta_Stress'].min())
     # Get the resilience index, the more positive the better resilience to stress.
     distances['Resilience_Index'] = (distances['Max_Delta_Stress']-distances['Recovery_Delta_Last_Phase'])/distances['population_max_delta_stress'].max()
 
@@ -515,5 +515,5 @@ dist_modi.to_csv('euclidean_distances.csv')
 # %%
 model.plot_freq(455, [1,2,3,4,5])
 # %%
-dist_mahal
+dist_mahal.to_csv('mahalanobis_distances.csv')
 # %%
