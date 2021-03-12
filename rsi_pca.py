@@ -106,6 +106,7 @@ class ResilienceStressIndex():
                 # Separating out the features
                 if resample == True:
                     x_ = data[['Electromyography','BloodVolume','Breathing','SkinConductance','CorporalTemperature']].values
+                    #x_ = data.drop(['Time','Phase'],axis=1).values
                 else:
                     x_ = data.drop(['Time','Subject','Phase'],axis=1).values
                 # Transform for linearity with power transformation
@@ -140,6 +141,16 @@ class ResilienceStressIndex():
                     # Concatenate the phase data
                     finalDf = pd.concat([principalDf, data['Phase']], axis=1)
                     self.df_pca_[key] = finalDf
+                
+                elif resample==True and get_variance == True:
+                    temp = {}
+                    for number_components in range(1, 6):
+                        pca = PCA(n_components=number_components)
+                        pca.fit(x)
+                        # Get the explained variance and save it
+                        #print('N_components {0}, Explained Var: {1}'.format(pca.n_components_,np.sum(pca.explained_variance_ratio_)))
+                        temp[pca.n_components_] = np.sum(pca.explained_variance_ratio_)
+                    self.df_pca_variance_[key] = temp
 
                 pbar.update(1)
 
@@ -165,6 +176,8 @@ class ResilienceStressIndex():
         ax.set_ylabel('PC2', fontsize = 15)
         # Plot
         targets = self.df_pca_.get(subject).Phase.unique()
+        if 'phase6' in targets:
+            targets = np.delete(targets, np.argwhere(targets=='phase6'))
         for target in targets:
             indicesToKeep = self.df_pca_.get(subject)['Phase'] == target
             ax.scatter(self.df_pca_.get(subject).loc[indicesToKeep, 'PC1']
@@ -187,6 +200,8 @@ class ResilienceStressIndex():
         #ax.set_title('PCA of Centroids of Subject: '+str(subject), fontsize = 20)
         # Plot
         targets = self.df_pca_centroids_.get(subject)['Phase'].unique()
+        if 'phase6' in targets:
+            targets = np.delete(targets, np.argwhere(targets=='phase6'))
         for target in targets:
             indicesToKeep = self.df_pca_centroids_.get(subject)['Phase'] == target
             ax.scatter(self.df_pca_centroids_.get(subject).loc[indicesToKeep, 'PC1']
@@ -221,7 +236,7 @@ class ResilienceStressIndex():
 
         return self
 
-    def euclidean_distance(self):
+    def euclidean_distance_original_data(self):
         distances_dict = {}
         for subject in self.df_pc_centroids_.keys():
             distances_dict[subject] = [np.sqrt((self.df_pc_centroids_.get(subject).Electromyography[0]-self.df_pc_centroids_.get(subject).Electromyography[element])**2+\
@@ -242,6 +257,15 @@ class ResilienceStressIndex():
         # This will get you the dataframe
         self.distances_['euclidean'] = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
 
+        return self
+
+    def euclidean_distance(self):
+        distances_dict = {}
+        for subject, data in self.df_pca_centroids_.items():
+            distances_dict[subject] = [np.linalg.norm(data.iloc[0,2:].values - data.iloc[element,2:]) for element in range(1,data.shape[0])]
+        # This will get you the dataframe
+        self.distances_['euclidean'] = pd.DataFrame.from_dict(data=distances_dict, orient='index', columns=['Ph1-Ph2','Ph1-Ph3','Ph1-Ph4','Ph1-Ph5','Ph1-Ph6'])
+        
         return self
     
     def calculate_resilience_index(self, results_):
@@ -353,10 +377,10 @@ def explained_variance_to_dataframe(results_):
                 for level2_key, values in level2_dict.items()}
         temp_df = pd.DataFrame(temp, index=['explained_variance_ratio']).T
         temp_df = temp_df.reset_index().rename(columns={'level_0':'subject','level_1':'n_components'})
-        temp_df.to_csv('explained_variance_results.csv', index=False)
+        temp_df.to_csv('explained_variance_results_of_five.csv', index=False)
 
         return None
-#explained_variance_to_dataframe(model.df_pca_variance_)
+explained_variance_to_dataframe(model.df_pca_variance_)
 # %% [markdown]
 '''
 The mean average of the percentage of explained variance of
@@ -418,9 +442,44 @@ the implementation of PCA and euclidean distance.
 As a next step we can get manhalanobis distance
 '''
 # %%
-model.plot_freq(data_num=455, export=False)
+def plot_freq(data, data_num, groups=[1,2,3,4,5], export=False):
+    values = data.get(data_num)[data.get(data_num).Phase != 'phase6'].values
+    i = 1
+    # plot each column
+    plt.figure(figsize=(10, 8))
+    labels = ['Electromyography','BVP','Breathing Rate','Skin Conductance','Peripheral Temperature']
+    for group in groups:
+        plt.subplot(len(groups), 1, i)
+        plt.plot(values[:, group])
+        plt.title(labels[group-1], y=0.5, loc='right')
+        plt.ticklabel_format(axis='x',style='sci',scilimits=(0,0))
+        phases = [30720, 61440, 92180, 122920]
+        for phase in phases:
+            plt.axvline(x=phase, color='red')
+        
+        i += 1
+    plt.gcf().text(0.17, 1.01, 'Phase 1') 
+    plt.gcf().text(0.335, 1.01, 'Phase 2') 
+    plt.gcf().text(0.50, 1.01, 'Phase 3') 
+    plt.gcf().text(0.67, 1.01, 'Phase 4') 
+    plt.gcf().text(0.82, 1.01, 'Phase 5') 
+
+    plt.tight_layout(pad=0.1)
+
+    plt.ylabel('Input Signal')
+    plt.xlabel('Time')
+
+    if export == True:
+        plt.savefig('freq_plot.eps', format='eps')
+    plt.show()
+
+    return None
 # %%
-model.create_pca(resample=True, get_variance=False)
+#model.plot_freq(data_num=219, export=False)
+plot_freq(model.df_pc_, 260, groups=[1,2,3,4,5], export=False)
+
+# %%
+model.create_pca(resample=True, get_variance=True)
 # %% [markdown]
 '''
 The PCA with four components has a explained variance bigger than 90%
@@ -432,10 +491,22 @@ model.calculate_centroids_pca()
 '''
 441(0.7271), 440(0.6918), 437(0.6357), 425(0.7121), 424(0.6476), 415(0.6525), 414(0.7436), 318 (0.5920)
 Ploting one subject pca centroids of each phase
+
+[100, 208, 209, 210, 211, 212, 215, 216, 217, 219, 220, 231, 
+233, 235, 237, 239, 244, 245, 246, 256, 260, 
+261, 263, 264, 269, 278, 279, 280, 281, 282, 283, 284, 285, 
+287, 288, 289, 292, 304, 305, 306, 307, 308, 309, 310, 311, 
+312, 313, 314, 315, 316, 317, 318, 413, 414, 415, 416, 423,
+ 424, 425, 437, 439, 440, 441, 442, 455, 456, 457, 458, 459, 
+ 460, 461]
+
+219 good resi
+260 bad resi
 '''
 # %%
-model.plot_pca(subject=455, export=False)
-model.plot_pca_centroid(455, export=False)
+model.plot_pca(subject=260, export=False)
+# %%
+model.plot_pca_centroid(100, export=False)
 # %% [markdown]
 '''
 Now we can calculate the distances

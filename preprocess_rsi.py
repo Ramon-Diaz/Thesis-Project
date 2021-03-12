@@ -1,8 +1,9 @@
 # %%
+from numpy.core.fromnumeric import size
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-#plt.rcParams.update({'font.size': 22})
+plt.rcParams.update({'font.size': 14})
 
 import os 
 from glob import glob
@@ -264,25 +265,33 @@ def importdata(file_name):
 df_graph = importdata('subjects_151_new.data')
 # %%
 def plot_freq(data, data_num, groups=[1,2,3,4,5], export=False):
-    values = data[data_num].values
+    values = data[data_num][data[data_num].Phase != 'phase6'].values
     i = 1
     # plot each column
     plt.figure(figsize=(10, 8))
+    labels = ['Electromyography','Blood Volume Pulse','Breathing Rate','Skin Conductance','Peripheral Temperature']
+    y_axis_labels = ['micro-Volts','Percentage','Percentage','micro-Siemens','°C']
     for group in groups:
         plt.subplot(len(groups), 1, i)
         plt.plot(values[:, group])
-        plt.title(data[data_num].columns.values[group], y=0.5, loc='right')
+        plt.title(labels[group-1], y=0.2, loc='right')
         plt.ticklabel_format(axis='x',style='sci',scilimits=(0,0))
         phases = [30720, 61440, 92180, 122920]
         for phase in phases:
             plt.axvline(x=phase, color='red')
         
         i += 1
-    plt.gcf().text(0.19, 0.89, 'Phase 1', fontsize=10) 
-    plt.gcf().text(0.34, 0.89, 'Phase 2', fontsize=10) 
-    plt.gcf().text(0.49, 0.89, 'Phase 3', fontsize=10) 
-    plt.gcf().text(0.63, 0.89, 'Phase 4', fontsize=10) 
-    plt.gcf().text(0.78, 0.89, 'Phase 5', fontsize=10) 
+        #plt.ylabel(y_axis_labels[group-1])
+    plt.gcf().text(0.17, 1.01, 'Phase 1') 
+    plt.gcf().text(0.335, 1.01, 'Phase 2') 
+    plt.gcf().text(0.50, 1.01, 'Phase 3') 
+    plt.gcf().text(0.67, 1.01, 'Phase 4') 
+    plt.gcf().text(0.82, 1.01, 'Phase 5') 
+
+    plt.tight_layout(pad=0.1)
+
+    plt.gcf().text(-0.03,0.5,'Standardize Units',va='center',rotation='vertical',fontsize=18)
+    plt.xlabel('Time with 256 samples/second', fontsize=18)
 
     if export == True:
         plt.savefig('freq_plot.eps', format='eps')
@@ -290,5 +299,8 @@ def plot_freq(data, data_num, groups=[1,2,3,4,5], export=False):
 
     return None
 
-plot_freq(df_graph, 66, groups=[1,2,3,4,5], export=False)
+plot_freq(model.df_pc_, 9, groups=[1,2,3,4,5], export=False)
+# %%
+plot_freq(df_graph, 9, groups=[1,2,3,4,5], export=False)
+
 # %%
